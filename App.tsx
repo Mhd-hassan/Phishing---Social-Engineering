@@ -3,13 +3,18 @@ import { analyzeContent } from './services/geminiService';
 import { AnalysisResult, AnalysisHistoryItem } from './types';
 import ResultCard from './components/ResultCard';
 import HistoryItem from './components/HistoryItem';
-import { Shield, Lock, ScanLine, Loader2, Upload, AlertCircle, History, Trash2, Github, X, WifiOff, FileWarning, ServerCrash, ShieldAlert, Cpu, Wand2 } from 'lucide-react';
+import { Shield, Lock, ScanLine, Loader2, Upload, AlertCircle, History, Trash2, X, WifiOff, FileWarning, ServerCrash, ShieldAlert, Cpu, Wand2, FileCode, PlayCircle, HelpCircle, ChevronDown, ChevronUp, Mail, Globe, CheckCircle2, Zap, Eye, Binary, CreditCard, Crown, LayoutGrid } from 'lucide-react';
 
 interface AppError {
   title: string;
   message: string;
   suggestion: string;
   type: 'validation' | 'network' | 'system' | 'safety' | 'quota';
+}
+
+interface FaqItem {
+  question: string;
+  answer: string;
 }
 
 // --- Image Processing Utility ---
@@ -24,7 +29,6 @@ const enhanceImageForAnalysis = (file: File): Promise<string> => {
       const ctx = canvas.getContext('2d');
       if (!ctx) { reject(new Error("Canvas context unavailable")); return; }
 
-      // 1. Smart Resize (Max 1920px width - Standard Full HD is optimal for OCR)
       const MAX_W = 1920;
       let w = img.width;
       let h = img.height;
@@ -35,29 +39,21 @@ const enhanceImageForAnalysis = (file: File): Promise<string> => {
       canvas.width = w;
       canvas.height = h;
 
-      // Draw original image scaled
       ctx.drawImage(img, 0, 0, w, h);
 
-      // 2. APPLY SHARPENING (OCR ENHANCEMENT)
-      //    A 3x3 convolution kernel to boost edge contrast for better text recognition.
-      //    Kernel: [ 0, -1,  0 ]
-      //            [-1,  5, -1 ]
-      //            [ 0, -1,  0 ]
       const imgData = ctx.getImageData(0, 0, w, h);
       const data = imgData.data;
-      const copyData = new Uint8ClampedArray(data); // Copy for reading neighbors
+      const copyData = new Uint8ClampedArray(data);
 
+      // Simple Sharpening Kernel
       for (let y = 1; y < h - 1; y++) {
         for (let x = 1; x < w - 1; x++) {
           const idx = (y * w + x) * 4;
-          
-          // Neighbor indices
           const top = ((y - 1) * w + x) * 4;
           const bottom = ((y + 1) * w + x) * 4;
           const left = (y * w + (x - 1)) * 4;
           const right = (y * w + (x + 1)) * 4;
 
-          // Apply Kernel to RGB
           for (let c = 0; c < 3; c++) { 
             const val = 5 * copyData[idx + c] 
                       - copyData[top + c] 
@@ -69,20 +65,17 @@ const enhanceImageForAnalysis = (file: File): Promise<string> => {
         }
       }
 
-      // 3. APPLY CONTRAST BOOST
-      //    Increases the separation between text and background.
-      const contrast = 1.20; // 20% boost (Increased for better accuracy)
+      // Contrast Boost (20%)
+      const contrast = 1.20;
       const intercept = 128 * (1 - contrast);
 
       for (let i = 0; i < data.length; i += 4) {
-        data[i] = Math.min(255, Math.max(0, data[i] * contrast + intercept));     // R
-        data[i+1] = Math.min(255, Math.max(0, data[i+1] * contrast + intercept)); // G
-        data[i+2] = Math.min(255, Math.max(0, data[i+2] * contrast + intercept)); // B
+        data[i] = Math.min(255, Math.max(0, data[i] * contrast + intercept));
+        data[i+1] = Math.min(255, Math.max(0, data[i+1] * contrast + intercept));
+        data[i+2] = Math.min(255, Math.max(0, data[i+2] * contrast + intercept));
       }
 
       ctx.putImageData(imgData, 0, 0);
-      
-      // Return as JPEG with high quality
       resolve(canvas.toDataURL('image/jpeg', 0.95));
     };
     
@@ -91,31 +84,386 @@ const enhanceImageForAnalysis = (file: File): Promise<string> => {
   });
 };
 
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+const ServicesSection: React.FC = () => {
+  const services = [
+    {
+      icon: ShieldAlert,
+      title: "Phishing Detection",
+      desc: "Real-time analysis of emails and messages to detect social engineering patterns."
+    },
+    {
+      icon: Eye,
+      title: "Deepfake Forensics",
+      desc: "Video analysis analyzing lip-sync and facial artifacts to identify AI-generated content."
+    },
+    {
+      icon: Binary,
+      title: "Malware Audit",
+      desc: "Static metadata analysis for .exe and .apk files to detect naming anomalies and risky signatures."
+    },
+    {
+      icon: Zap,
+      title: "Instant OCR",
+      desc: "High-contrast text extraction from screenshots to read hidden malicious URLs."
+    }
+  ];
+
+  return (
+    <div className="py-8">
+      <h3 className="text-xl font-bold flex items-center gap-2 text-slate-300 mb-6">
+        <CheckCircle2 className="w-5 h-5" />
+        Our Security Services
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {services.map((s, idx) => (
+          <div key={idx} className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl flex items-start gap-4 hover:bg-slate-800 transition-colors">
+            <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
+              <s.icon className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-200">{s.title}</h4>
+              <p className="text-sm text-slate-400 mt-1">{s.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+interface PricingTier {
+  name: string;
+  price: string;
+  period?: string;
+  description: string;
+  features: string[];
+  cta: string;
+  highlight?: boolean;
+  icon: React.ElementType;
+}
+
+interface SubscriptionSectionProps {
+  onSubscribe: (plan: string) => void;
+}
+
+const SubscriptionSection: React.FC<SubscriptionSectionProps> = ({ onSubscribe }) => {
+  const tiers: PricingTier[] = [
+    {
+      name: "Free Guard",
+      price: "$0",
+      description: "Essential protection for individuals.",
+      features: [
+        "Basic Text Analysis",
+        "Standard Image Scan",
+        "5 Scans / Day",
+        "Community Support"
+      ],
+      cta: "Current Plan",
+      highlight: false,
+      icon: Shield
+    },
+    {
+      name: "Pro Shield",
+      price: "$9",
+      period: "/mo",
+      description: "Advanced forensics for power users.",
+      features: [
+        "Deep Video Forensics",
+        "APK/EXE Metadata Audit",
+        "50 Scans / Day",
+        "Priority Processing",
+        "No Wait Time"
+      ],
+      cta: "Upgrade to Pro",
+      highlight: true,
+      icon: Crown
+    },
+    {
+      name: "Premium Ops",
+      price: "$29",
+      period: "/mo",
+      description: "Complete security suite for freelancers.",
+      features: [
+        "Unlimited Scans",
+        "API Access (1k req/mo)",
+        "24/7 Expert Chat",
+        "Detailed PDF Reports",
+        "Malware Heuristics"
+      ],
+      cta: "Get Premium",
+      highlight: false,
+      icon: Zap
+    },
+    {
+      name: "Enterprise",
+      price: "Custom",
+      description: "Dedicated infrastructure for teams.",
+      features: [
+        "Custom API Rate Limits",
+        "On-Premise Deployment",
+        "Dedicated Account Manager",
+        "SLA Guarantee",
+        "SSO Integration"
+      ],
+      cta: "Contact Sales",
+      highlight: false,
+      icon: LayoutGrid
+    }
+  ];
+
+  return (
+    <div className="py-12">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-xl font-bold flex items-center gap-2 text-slate-300">
+          <CreditCard className="w-5 h-5" />
+          Plans & Pricing
+        </h3>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {tiers.map((tier, idx) => (
+          <div 
+            key={idx} 
+            className={`relative p-6 rounded-2xl border flex flex-col ${
+              tier.highlight 
+                ? 'bg-slate-800/80 border-indigo-500 shadow-xl shadow-indigo-500/10 scale-105 z-10' 
+                : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 transition-colors'
+            }`}
+          >
+            {tier.highlight && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full text-[10px] font-bold uppercase tracking-wider text-white shadow-lg">
+                Most Popular
+              </div>
+            )}
+
+            <div className="mb-4">
+              <div className={`p-3 rounded-lg inline-block mb-3 ${tier.highlight ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-700/50 text-slate-400'}`}>
+                <tier.icon className="w-6 h-6" />
+              </div>
+              <h4 className={`text-lg font-bold ${tier.highlight ? 'text-indigo-400' : 'text-slate-200'}`}>
+                {tier.name}
+              </h4>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-3xl font-bold text-white">{tier.price}</span>
+                {tier.period && <span className="text-slate-500 text-sm">{tier.period}</span>}
+              </div>
+              <p className="text-sm text-slate-400 mt-2 min-h-[40px]">{tier.description}</p>
+            </div>
+
+            <ul className="space-y-3 mb-8 flex-1">
+              {tier.features.map((feat, fIdx) => (
+                <li key={fIdx} className="flex items-start gap-2 text-sm text-slate-300">
+                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${tier.highlight ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  {feat}
+                </li>
+              ))}
+            </ul>
+
+            <button 
+              onClick={() => onSubscribe(tier.name)}
+              className={`w-full py-3 rounded-xl font-bold transition-all ${
+                tier.highlight 
+                  ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/20' 
+                  : 'bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600'
+              }`}
+            >
+              {tier.cta}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ContactSection: React.FC = () => {
+  return (
+    <div className="py-8 border-t border-slate-800 mt-8">
+      <div className="bg-gradient-to-br from-slate-900 to-indigo-950/30 rounded-2xl border border-slate-700/50 p-8 text-center md:text-left md:flex items-center justify-between gap-8">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-2">Need Enterprise Protection?</h3>
+          <p className="text-slate-400 max-w-md">
+            Contact our security research team for API access, dedicated hosting, or custom threat model integration.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 mt-6 md:mt-0 min-w-[200px]">
+          <a href="mailto:security@cybershield.ai" className="flex items-center gap-3 text-slate-300 bg-black/20 px-4 py-2 rounded-lg border border-white/5 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
+            <Mail className="w-4 h-4 text-indigo-400" />
+            <span className="text-sm">security@cybershield.ai</span>
+          </a>
+          <a href="http://www.cybershield.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-slate-300 bg-black/20 px-4 py-2 rounded-lg border border-white/5 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
+            <Globe className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm">www.cybershield.com</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FAQSection: React.FC = () => {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const faqs: FaqItem[] = [
+    {
+      question: "How does the Deepfake detection work?",
+      answer: "We analyze video frames for subtle inconsistencies in lip-syncing, eye blinking patterns, and facial micro-expressions that are typical of AI-generated videos."
+    },
+    {
+      question: "Is it safe to upload my files?",
+      answer: "Yes. Your files are processed in real-time by the AI engine and are not stored on our servers. Images are processed locally in your browser to enhance quality before being sent for analysis."
+    },
+    {
+      question: "Can you analyze .exe or .apk files?",
+      answer: "We perform a 'Static Metadata Audit' on executable files. We do not run the program. Instead, we analyze the file structure, naming conventions, and origin context to detect common malware patterns like Double Extensions (e.g., 'invoice.pdf.exe')."
+    },
+    {
+      question: "What does the Safety Score mean?",
+      answer: "The Safety Score is a deductive metric starting at 100. We subtract points for every risk factor found (e.g., -50 for bad grammar, -80 for typosquatted URLs). A score below 90 is always marked as 'Do NOT Trust'."
+    }
+  ];
+
+  return (
+    <div className="max-w-3xl mx-auto py-8">
+       <h3 className="text-xl font-bold flex items-center gap-2 text-slate-300 mb-6">
+          <HelpCircle className="w-5 h-5" />
+          Frequently Asked Questions
+       </h3>
+       <div className="space-y-4">
+         {faqs.map((faq, idx) => (
+           <div key={idx} className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden transition-all">
+             <button 
+               onClick={() => setOpenIndex(openIndex === idx ? null : idx)}
+               className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-800 transition-colors"
+             >
+               <span className="font-medium text-slate-200">{faq.question}</span>
+               {openIndex === idx ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+             </button>
+             {openIndex === idx && (
+               <div className="p-4 pt-0 text-slate-400 text-sm leading-relaxed border-t border-slate-700/30">
+                 {faq.answer}
+               </div>
+             )}
+           </div>
+         ))}
+       </div>
+    </div>
+  );
+};
+
+interface SubscriptionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  status: 'loading' | 'success' | 'contact' | 'info';
+  plan: string;
+}
+
+const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, status, plan }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
+             <X className="w-5 h-5" />
+          </button>
+          
+          {status === 'loading' && (
+             <div className="text-center py-8">
+                <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white">Processing Request...</h3>
+                <p className="text-slate-400 mt-2">Connecting to secure payment gateway.</p>
+             </div>
+          )}
+
+          {status === 'success' && (
+             <div className="text-center py-6">
+                <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Success!</h3>
+                <p className="text-slate-300">
+                   You have successfully subscribed to <span className="text-indigo-400 font-bold">{plan}</span>.
+                </p>
+                <button onClick={onClose} className="mt-8 w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-white transition-colors">
+                   Get Started
+                </button>
+             </div>
+          )}
+
+          {status === 'contact' && (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <Mail className="w-8 h-8 text-blue-500" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Request Sent</h3>
+                <p className="text-slate-300">
+                   Our sales team has received your inquiry for <span className="text-white font-bold">{plan}</span>. We will contact you shortly.
+                </p>
+                <button onClick={onClose} className="mt-8 w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-white transition-colors">
+                   Close
+                </button>
+             </div>
+          )}
+          
+          {status === 'info' && (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <Shield className="w-8 h-8 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Current Plan</h3>
+                <p className="text-slate-300">
+                   You are currently active on <span className="text-white font-bold">{plan}</span>.
+                </p>
+                <button onClick={onClose} className="mt-8 w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-white transition-colors">
+                   Close
+                </button>
+             </div>
+          )}
+       </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [processedImage, setProcessedImage] = useState<string | null>(null); // Store the enhanced version
-  const [isProcessingImage, setIsProcessingImage] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [processedImage, setProcessedImage] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<AppError | null>(null);
+  
+  // Subscription Modal State
+  const [subModal, setSubModal] = useState<{isOpen: boolean; status: 'loading'|'success'|'contact'|'info'; plan: string}>({
+    isOpen: false,
+    status: 'loading',
+    plan: ''
+  });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize history from localStorage (Lazy Init) to prevent race conditions
   const [history, setHistory] = useState<AnalysisHistoryItem[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem('cyberShieldHistory');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      console.error("Failed to parse history", e);
       return [];
     }
   });
 
-  // Save history to local storage whenever it changes
   useEffect(() => {
     localStorage.setItem('cyberShieldHistory', JSON.stringify(history));
   }, [history]);
@@ -126,35 +474,42 @@ const App: React.FC = () => {
       setSelectedFile(file);
       setResult(null);
       setError(null);
+      setProcessedImage(null);
       
-      // 1. Show immediate preview of original
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
 
-      // 2. Process image in background for AI
+      // Handle Image Processing
       if (file.type.startsWith('image/')) {
-        setIsProcessingImage(true);
+        setIsProcessing(true);
         try {
           const enhanced = await enhanceImageForAnalysis(file);
           setProcessedImage(enhanced);
         } catch (err) {
-          console.error("Image processing failed, falling back to original", err);
-          setProcessedImage(null);
+          console.error("Image processing failed", err);
         } finally {
-          setIsProcessingImage(false);
+          setIsProcessing(false);
         }
-      } else {
-        setProcessedImage(null);
+      }
+      // Handle Video (Check size)
+      else if (file.type.startsWith('video/')) {
+        if (file.size > 20 * 1024 * 1024) { // 20MB limit for demo
+          setError({
+            title: "File Too Large",
+            message: "For this demo, video files must be under 20MB.",
+            suggestion: "Please upload a shorter clip or compress the video.",
+            type: 'validation'
+          });
+          setSelectedFile(null);
+          setPreviewUrl(null);
+        }
       }
     }
   };
 
   const clearFile = () => {
     setSelectedFile(null);
-    setImagePreview(null);
+    setPreviewUrl(null);
     setProcessedImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -164,166 +519,83 @@ const App: React.FC = () => {
       setError({
         title: "Input Missing",
         message: "The analysis engine requires data to process.",
-        suggestion: "Please paste the suspicious text OR upload a screenshot/image.",
+        suggestion: "Please paste text OR upload a file (Image, Video, APK, EXE).",
         type: 'validation'
       });
       return;
     }
 
-    if (isProcessingImage) {
-      setError({
-        title: "Processing Image",
-        message: "Please wait, we are enhancing the image for maximum forensic clarity.",
-        suggestion: "This usually takes less than a second.",
-        type: 'system'
-      });
-      return;
-    }
+    if (isProcessing) return;
 
     setIsLoading(true);
     setProgress(0);
     setError(null);
     setResult(null);
 
-    // Simulate progress while waiting for API
     const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        // Increment randomly, stall at 90%
-        const next = prev + Math.floor(Math.random() * 15) + 1;
-        return next > 90 ? 90 : next;
-      });
+      setProgress((prev) => (prev < 90 ? prev + Math.floor(Math.random() * 15) + 1 : 90));
     }, 600);
 
     try {
-      let base64Image = undefined;
+      let contentPayload = inputText;
+      let base64Data = undefined;
       let mimeType = undefined;
-      let finalInputText = inputText;
 
       if (selectedFile) {
-        if (processedImage) {
-          // Use the Enhanced Image (JPEG)
-          base64Image = processedImage.replace(/^data:.+;base64,/, '');
-          mimeType = 'image/jpeg';
-          // append metadata to help the AI understand the image has been pre-processed
-          finalInputText = inputText + "\n\n[SYSTEM METADATA: Image pre-processed with Edge Sharpening and Contrast Boost for optimal OCR extraction.]";
-        } else if (imagePreview) {
-          // Fallback to Original
-          base64Image = imagePreview.replace(/^data:.+;base64,/, '');
-          mimeType = selectedFile.type;
+        if (selectedFile.type.startsWith('image/') && processedImage) {
+           base64Data = processedImage.replace(/^data:.+;base64,/, '');
+           mimeType = 'image/jpeg';
+           contentPayload += "\n\n[SYSTEM METADATA: Image pre-processed with Edge Sharpening.]";
+        } else if (selectedFile.type.startsWith('video/')) {
+           const rawBase64 = await fileToBase64(selectedFile);
+           base64Data = rawBase64.replace(/^data:.+;base64,/, '');
+           mimeType = selectedFile.type;
+           contentPayload += `\n\n[SYSTEM METADATA: Analyzing Video Clip: ${selectedFile.name}]`;
+        } else {
+           // BINARY FILES (EXE, APK) - We send metadata ONLY
+           contentPayload += `\n\n[FILE METADATA]\nFilename: ${selectedFile.name}\nSize: ${(selectedFile.size/1024).toFixed(2)} KB\nType: ${selectedFile.type || 'Unknown Binary'}\n\nWARNING: USER UPLOADED AN EXECUTABLE/INSTALLER FILE. CHECK FOR MALWARE NAMING CONVENTIONS.`;
         }
       }
 
-      const analysisData = await analyzeContent(finalInputText, base64Image, mimeType);
+      const analysisData = await analyzeContent(contentPayload, base64Data, mimeType);
       
-      // Force progress to 100% on success
       clearInterval(progressInterval);
       setProgress(100);
-
-      // Short delay to let user see 100%
       await new Promise(resolve => setTimeout(resolve, 400));
       
       setResult(analysisData);
 
-      // Add to history
+      let type: 'text' | 'image' | 'video' | 'binary' = 'text';
+      if (selectedFile) {
+        if (selectedFile.type.startsWith('image/')) type = 'image';
+        else if (selectedFile.type.startsWith('video/')) type = 'video';
+        else type = 'binary';
+      }
+
       const newHistoryItem: AnalysisHistoryItem = {
         ...analysisData,
         id: crypto.randomUUID(),
         timestamp: Date.now(),
-        preview: selectedFile ? (inputText || `Image: ${selectedFile.name}`) : inputText,
-        type: selectedFile ? 'image' : 'text'
+        preview: selectedFile ? `${selectedFile.name} (${type})` : inputText,
+        type: type
       };
 
-      setHistory(prev => [newHistoryItem, ...prev].slice(0, 50)); // Keep last 50
+      setHistory(prev => [newHistoryItem, ...prev].slice(0, 50));
 
     } catch (err: any) {
       clearInterval(progressInterval);
       setProgress(0);
-      console.error("Analysis Error:", err);
-      
-      const msg = (err.message || "").toLowerCase();
-      // Attempt to stringify the error to catch embedded codes, handle circular refs gracefully
-      let fullErrString = "";
-      try { fullErrString = JSON.stringify(err).toLowerCase(); } catch { fullErrString = msg; }
-
-      let appError: AppError = {
-        title: "System Error",
-        message: "An unexpected error interrupted the analysis protocol.",
-        suggestion: "Please try again. If the issue persists, refresh the page.",
-        type: 'system'
-      };
-
-      // --- ERROR CLASSIFICATION LOGIC ---
-
-      // 1. SAFETY & MODERATION (AI Filter blocks)
-      if (msg.includes('safety') || msg.includes('blocked') || (fullErrString.includes('finishreason') && fullErrString.includes('safety'))) {
-        appError = {
-          title: "Safety Protocol Triggered",
-          message: "The content was flagged by our safety filters as potentially harmful or explicit.",
-          suggestion: "We cannot process content that violates safety policies. Please redact sensitive/explicit data.",
-          type: 'safety'
-        };
-      }
-      
-      // 2. AUTHENTICATION & CONFIG (API Key issues)
-      else if (msg.includes('api key') || msg.includes('403') || msg.includes('permission_denied')) {
-        appError = {
-          title: "Authentication Failed",
-          message: "The system could not verify the API credentials.",
-          suggestion: "Please check that your API_KEY environment variable is set and valid.",
-          type: 'system'
-        };
-      }
-
-      // 3. QUOTA & RATE LIMITS (429)
-      else if (msg.includes('429') || msg.includes('quota') || msg.includes('resource exhausted') || msg.includes('too many requests')) {
-        appError = {
-          title: "High Traffic Volume",
-          message: "The analysis engine is currently at maximum capacity.",
-          suggestion: "Please wait 30 seconds before retrying to let the queue clear.",
-          type: 'quota'
-        };
-      }
-
-      // 4. NETWORK & SERVER (503, Fetch)
-      else if (msg.includes('fetch') || msg.includes('network') || msg.includes('connection') || msg.includes('503') || msg.includes('500')) {
-        appError = {
-          title: "Connection Severed",
-          message: "Unable to establish a link with the analysis servers.",
-          suggestion: "Check your internet connection. Firewalls or VPNs might be blocking the request.",
-          type: 'network'
-        };
-      }
-
-      // 5. PARSING & DATA INTEGRITY (JSON Errors)
-      else if (msg.includes('json') || msg.includes('token') || msg.includes('syntax') || msg.includes('parse')) {
-        appError = {
-          title: "Report Generation Error",
-          message: "The AI generated a malformed report that could not be decoded.",
-          suggestion: "This is a temporary glitch. Please click 'Analyze Risk' again.",
-          type: 'system'
-        };
-      }
-
-      // 6. IMAGE/FILE ISSUES
-      else if (msg.includes('image') || msg.includes('mime') || msg.includes('format')) {
-        appError = {
-          title: "File Read Error",
-          message: "The uploaded image data is corrupted or unsupported.",
-          suggestion: "Try uploading a standard JPG or PNG file.",
-          type: 'validation'
-        };
-      }
-
-      setError(appError);
+      console.error(err);
+      setError({
+         title: "Analysis Failed",
+         message: "Could not complete the security audit.",
+         suggestion: "Please check your API key and network connection.",
+         type: 'system'
+      });
     } finally {
       setIsLoading(false);
-      // Reset progress after a moment to clear the button state cleanly
       setTimeout(() => setProgress(0), 200);
     }
-  };
-
-  const handleClearHistory = () => {
-    setHistory([]);
   };
 
   const restoreFromHistory = (item: AnalysisHistoryItem) => {
@@ -332,42 +604,40 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const getErrorIcon = (type: AppError['type']) => {
-    switch (type) {
-      case 'network': return WifiOff;
-      case 'validation': return FileWarning;
-      case 'system': return ServerCrash;
-      case 'safety': return ShieldAlert;
-      case 'quota': return Cpu;
-      default: return AlertCircle;
+  const handleSubscribe = (plan: string) => {
+    if (plan === 'Free Guard') {
+      setSubModal({ isOpen: true, status: 'info', plan });
+      return;
     }
+    
+    // Start loading state
+    setSubModal({ isOpen: true, status: 'loading', plan });
+
+    // Simulate different outcomes
+    setTimeout(() => {
+      if (plan === 'Enterprise') {
+        setSubModal({ isOpen: true, status: 'contact', plan });
+      } else {
+        setSubModal({ isOpen: true, status: 'success', plan });
+      }
+    }, 1500);
   };
 
-  const getErrorColorClass = (type: AppError['type']) => {
-    switch (type) {
-        case 'safety': return 'bg-red-900/20 border-red-500/50 text-red-200';
-        case 'network': return 'bg-blue-900/20 border-blue-500/50 text-blue-200';
-        case 'quota': return 'bg-orange-900/20 border-orange-500/50 text-orange-200';
-        case 'validation': return 'bg-yellow-900/20 border-yellow-500/50 text-yellow-200';
-        case 'system': return 'bg-slate-800 border-slate-500/50 text-slate-200';
-        default: return 'bg-slate-800 border-slate-600 text-slate-200';
-    }
-  };
-
-  const getErrorIconBg = (type: AppError['type']) => {
-    switch (type) {
-        case 'safety': return 'bg-red-900/50 text-red-500';
-        case 'network': return 'bg-blue-900/50 text-blue-500';
-        case 'quota': return 'bg-orange-900/50 text-orange-500';
-        case 'validation': return 'bg-yellow-900/50 text-yellow-500';
-        case 'system': return 'bg-slate-700 text-slate-400';
-        default: return 'bg-slate-700 text-slate-400';
-    }
+  const closeSubModal = () => {
+    setSubModal(prev => ({ ...prev, isOpen: false }));
   };
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 selection:bg-indigo-500/30">
       
+      {/* Subscription Modal */}
+      <SubscriptionModal 
+        isOpen={subModal.isOpen} 
+        onClose={closeSubModal} 
+        status={subModal.status} 
+        plan={subModal.plan} 
+      />
+
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -385,11 +655,6 @@ const App: React.FC = () => {
                <p className="text-[10px] text-slate-400 uppercase tracking-widest leading-none">Threat Detection System</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-             <a href="#" className="text-slate-500 hover:text-indigo-400 transition-colors">
-               <Github className="w-5 h-5" />
-             </a>
-          </div>
         </div>
       </header>
 
@@ -398,30 +663,25 @@ const App: React.FC = () => {
         {/* Intro */}
         <section className="text-center space-y-4 max-w-2xl mx-auto">
            <h2 className="text-3xl md:text-4xl font-bold text-slate-100">
-             Is that message <span className="text-emerald-400">safe</span> or a <span className="text-red-500">scam</span>?
+             Is that file <span className="text-emerald-400">safe</span> or <span className="text-red-500">malware</span>?
            </h2>
            <p className="text-slate-400 text-lg">
-             Paste emails, SMS, URLs, or upload screenshots. <br className="hidden md:inline" /> 
-             Our AI analyzes patterns to detect phishing and social engineering.
+             Analyze emails, screenshots, videos, and suspicious files (.exe, .apk).
            </p>
         </section>
 
         {/* Input Area */}
         <section className="max-w-3xl mx-auto bg-slate-800/50 rounded-2xl border border-slate-700/50 p-6 shadow-2xl relative overflow-hidden">
-           {/* Background decorative glow */}
            <div className="absolute top-0 right-0 -mt-20 -mr-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
            
            <div className="relative space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2 ml-1">Message Content / URL / Transcript</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2 ml-1">Context / Description / Message</label>
                 <textarea
                   value={inputText}
-                  onChange={(e) => {
-                    setInputText(e.target.value);
-                    if (error?.type === 'validation') setError(null);
-                  }}
-                  placeholder="Paste text here or describe the image you are uploading..."
-                  className="w-full h-32 bg-slate-900 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none"
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Describe where you got this file or paste the message text..."
+                  className="w-full h-24 bg-slate-900 border border-slate-700 rounded-xl p-4 text-slate-200 placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all resize-none"
                 />
               </div>
 
@@ -431,7 +691,7 @@ const App: React.FC = () => {
                       type="file" 
                       ref={fileInputRef}
                       onChange={handleFileChange}
-                      accept="image/*"
+                      accept="image/*,video/mp4,application/vnd.android.package-archive,application/x-msdownload,.exe,.apk"
                       className="hidden"
                     />
                     <button 
@@ -440,13 +700,15 @@ const App: React.FC = () => {
                     >
                       {selectedFile ? (
                         <>
-                          <ScanLine className="w-5 h-5" />
+                          {selectedFile.type.startsWith('video') ? <PlayCircle className="w-5 h-5"/> : 
+                           selectedFile.type.startsWith('image') ? <ScanLine className="w-5 h-5"/> : 
+                           <FileCode className="w-5 h-5"/>}
                           <span className="truncate max-w-[200px]">{selectedFile.name}</span>
                         </>
                       ) : (
                         <>
                           <Upload className="w-5 h-5" />
-                          <span>Upload Screenshot (Optional)</span>
+                          <span>Upload File (Img, Vid, Exe, Apk)</span>
                         </>
                       )}
                     </button>
@@ -458,18 +720,16 @@ const App: React.FC = () => {
                  )}
               </div>
               
-              {imagePreview && (
+              {/* Previews */}
+              {previewUrl && selectedFile?.type.startsWith('image/') && (
                 <div className="mt-4 relative rounded-xl overflow-hidden border border-slate-700 inline-block group">
-                  <img src={imagePreview} alt="Preview" className="h-32 object-cover" />
-                  {isProcessingImage && (
+                  <img src={previewUrl} alt="Preview" className="h-32 object-cover" />
+                  {isProcessing && (
                     <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center backdrop-blur-sm">
-                      <div className="flex flex-col items-center gap-2">
-                         <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
-                         <span className="text-xs font-medium text-indigo-300">Sharpening for OCR...</span>
-                      </div>
+                       <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
                     </div>
                   )}
-                  {processedImage && !isProcessingImage && (
+                  {processedImage && !isProcessing && (
                     <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1.5 border border-white/10 shadow-lg">
                       <Wand2 className="w-3 h-3 text-emerald-400" />
                       <span className="text-[10px] font-bold text-white uppercase tracking-wide">OCR Optimized</span>
@@ -478,34 +738,37 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {error && (
-                <div className={`relative rounded-xl p-4 border flex items-start gap-4 transition-all animate-in fade-in slide-in-from-top-2 shadow-lg ${getErrorColorClass(error.type)}`}>
-                  <div className={`p-2 rounded-lg shrink-0 ${getErrorIconBg(error.type)}`}>
-                    {React.createElement(getErrorIcon(error.type), { className: "w-6 h-6" })}
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <h4 className="font-bold text-sm uppercase tracking-wide opacity-90">{error.title}</h4>
-                    <p className="font-medium text-sm leading-relaxed">{error.message}</p>
-                    <div className="mt-2 flex items-start gap-2 text-xs opacity-80 bg-black/20 p-2 rounded">
-                        <span className="font-bold uppercase text-[10px] mt-0.5 tracking-wider">Fix:</span>
-                        <p className="italic">{error.suggestion}</p>
+              {previewUrl && selectedFile?.type.startsWith('video/') && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-slate-700 inline-block bg-black">
+                   <video src={previewUrl} className="h-48" controls />
+                   <div className="p-2 text-xs text-slate-400 flex items-center gap-2">
+                      <PlayCircle className="w-3 h-3" /> Video Forensics Ready
+                   </div>
+                </div>
+              )}
+
+              {selectedFile && !selectedFile.type.startsWith('image/') && !selectedFile.type.startsWith('video/') && (
+                 <div className="mt-4 p-4 bg-slate-900 rounded-xl border border-slate-700 flex items-center gap-3">
+                    <FileCode className="w-8 h-8 text-orange-400" />
+                    <div>
+                       <p className="text-sm font-bold text-slate-200">{selectedFile.name}</p>
+                       <p className="text-xs text-slate-500">{(selectedFile.size/1024).toFixed(1)} KB &bull; Metadata Audit Only</p>
                     </div>
-                  </div>
-                  <button 
-                    onClick={() => setError(null)}
-                    className="absolute top-2 right-2 p-1.5 opacity-60 hover:opacity-100 hover:bg-white/10 rounded-lg transition-all"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                 </div>
+              )}
+
+              {error && (
+                <div className="p-4 bg-red-900/20 border border-red-500/50 rounded-xl text-red-200 text-sm">
+                   <strong className="block mb-1">{error.title}</strong>
+                   {error.message}
                 </div>
               )}
 
               <button
                 onClick={handleAnalyze}
-                disabled={isLoading || isProcessingImage}
+                disabled={isLoading || isProcessing}
                 className="relative w-full py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-900/20 disabled:cursor-not-allowed transition-all transform hover:scale-[1.01] active:scale-[0.99] overflow-hidden"
               >
-                {/* Progress Bar Background Overlay */}
                 {isLoading && (
                   <div 
                     className="absolute inset-y-0 left-0 bg-white/20 transition-all duration-300 ease-out"
@@ -517,7 +780,7 @@ const App: React.FC = () => {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Running Forensic Analysis... {progress}%</span>
+                      <span>Running Forensics... {progress}%</span>
                     </>
                   ) : (
                     <>
@@ -537,7 +800,7 @@ const App: React.FC = () => {
           </section>
         )}
 
-        {/* History Section - Permanently Visible */}
+        {/* History Section */}
         <section className="max-w-3xl mx-auto pt-8 border-t border-slate-800">
            <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold flex items-center gap-2 text-slate-300">
@@ -546,7 +809,7 @@ const App: React.FC = () => {
               </h3>
               {history.length > 0 && (
                 <button 
-                  onClick={handleClearHistory}
+                  onClick={() => setHistory([])}
                   className="text-xs text-slate-500 hover:text-red-400 transition-colors"
                 >
                   Clear History
@@ -561,12 +824,30 @@ const App: React.FC = () => {
                 ))}
              </div>
            ) : (
-             <div className="text-center py-12 border-2 border-dashed border-slate-800 rounded-xl">
-                <History className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-                <p className="text-slate-500 font-medium">No analysis history available</p>
-                <p className="text-slate-600 text-sm mt-1">Recent scans will appear here automatically</p>
+             <div className="text-center py-8 border-2 border-dashed border-slate-800 rounded-xl text-slate-500">
+                <p>No analysis history available</p>
              </div>
            )}
+        </section>
+
+        {/* Services Section */}
+        <section className="max-w-3xl mx-auto border-t border-slate-800 pt-8">
+           <ServicesSection />
+        </section>
+
+        {/* Subscription Section */}
+        <section className="max-w-7xl mx-auto border-t border-slate-800 pt-8">
+          <SubscriptionSection onSubscribe={handleSubscribe} />
+        </section>
+
+        {/* FAQ Section */}
+        <section className="border-t border-slate-800 pt-8">
+           <FAQSection />
+        </section>
+        
+        {/* Contact Section */}
+        <section>
+          <ContactSection />
         </section>
 
       </main>
