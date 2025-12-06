@@ -1,0 +1,5 @@
+{
+  "name": "CyberShield-AI",
+  "description": "An elite cybersecurity assistant specialized in detecting phishing and social engineering attacks using Forensic Gemini 3.0 Pro analysis.",
+  "requestFramePermissions": []
+}
