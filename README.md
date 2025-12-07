@@ -16,3 +16,7 @@ The challenge lies in empowering users to recognize and defend against these thr
 <img width="1600" height="872" alt="supawork-2762da9ce5d94972b5bebdde19493923" src="https://github.com/user-attachments/assets/9990e845-97ea-45f6-afb8-ae2c66ab7ae4" />
 
 <img width="1344" height="768" alt="supawork-0229a2b8237b4620a06996b283c24415" src="https://github.com/user-attachments/assets/711a42ab-7812-4cf2-90c6-6ccde0c4de39" />
+
+
+
+[Phishing & Social Engineering Attacks.pptx](https://github.com/user-attachments/files/24011814/Phishing.Social.Engineering.Attacks.pptx)
